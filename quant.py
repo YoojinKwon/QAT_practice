@@ -56,9 +56,9 @@ class LSQWeightFakeQuantizer(nn.Module):
             self.s.data = 2.0 * w.abs().mean() / math.sqrt(self.p) # initialization
 
         s = identity_with_grad_scaling(self.s, grad_scale) # step size
-        # w_q = round_with_grad_pass((w / s).clamp(self.n, self.p))
-        w_fq = round_with_grad_pass((w / s).clamp(self.n, self.p)) * s
-        return w_fq
+        w_q = round_with_grad_pass((w / s).clamp(self.n, self.p))
+        # w_fq = round_with_grad_pass((w / s).clamp(self.n, self.p)) * s
+        return w_q
 
 
 # Refer to https://github.com/hustzxd/EfficientPyTorch/blob/clean/models/_modules/lsq.py#L136
@@ -98,9 +98,9 @@ class LSQActFakeQuantizer(nn.Module):
             self.s.data = 2.0 * x.abs().mean() / math.sqrt(self.p)
 
         s = identity_with_grad_scaling(self.s, grad_scale)
-        # x_q = round_with_grad_pass((x / s).clamp(self.n, self.p))
-        x_fq = round_with_grad_pass((x / s).clamp(self.n, self.p)) * s
-        return x_fq
+        x_q = round_with_grad_pass((x / s).clamp(self.n, self.p))
+        # x_fq = round_with_grad_pass((x / s).clamp(self.n, self.p)) * s
+        return x_q
 
 
 """
