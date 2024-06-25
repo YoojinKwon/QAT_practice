@@ -311,14 +311,11 @@ def q_preact_resnet26(
     q_bits_w,
     q_bits_a,
     track_running_stats,
-    num_classes,
-    source_dataset,
-    weight_init):
+    num_classes):
     model = QPreactResNetForCIFAR(
         q_scheme, q_bits_w, q_bits_a, track_running_stats,
         26, num_classes)
     if pretrained:
-        assert source_dataset in ['cifar10', 'svhn']
         pretrained_ckpt = torch.load(f'./preact_resnet26_on_cifar10.pt')
         model.load_state_dict(pretrained_ckpt['model'], strict=False)
     return model
