@@ -17,11 +17,6 @@ class BatchNorm2d(nn.BatchNorm2d):          # nn.BatchNorm2d with affine=True. N
             num_features,
             track_running_stats=track_running_stats)
 
-        # TODO
-        self.analyze = False
-        self.an_x = None
-        self.an_y = None
-
         nn.init.ones_(self.weight)  # gamma (weight)
         nn.init.zeros_(self.bias)   # beta (bias)
 
@@ -50,11 +45,6 @@ class QConv2d(nn.Module):
         padding_mode='zeros'):
         super(QConv2d, self).__init__()
 
-        # TODO
-        self.analyze = False
-        self.an_w = None
-        self.an_x = None
-        self.an_y = None
         if q_bits_w is not None:
             self.an_w_fq = None
         # bias is set to False
@@ -69,10 +59,7 @@ class QConv2d(nn.Module):
         if (q_bits_w is None) and (q_bits_a is None): q_scheme = None
         self.q_bits_w = q_bits_w
         self.q_bits_a = q_bits_a
-        if q_scheme == 'sat':
-            if q_bits_w is not None: self.fake_quantizer_w = SATWeightFakeQuantizer(q_bits_w)
-            if q_bits_a is not None: self.fake_quantizer_a = SATActFakeQuantizer(q_bits_a, 8.0)
-        elif q_scheme == 'lsq':
+        if q_scheme == 'lsq':
             if q_bits_w is not None: self.fake_quantizer_w = LSQWeightFakeQuantizer(q_bits_w)
             if q_bits_a is not None: self.fake_quantizer_a = LSQActFakeQuantizer(q_bits_a)
         else:
@@ -92,26 +79,16 @@ class QConv2d(nn.Module):
     def forward(self, x):
         if self.q_bits_a is not None:
             x_used = self.fake_quantizer_a(x)   # x_fq
-            # TODO
-            if self.analyze:
-                self.an_x_fq = x_used
         else:
             x_used = x
 
         if self.q_bits_w is not None:
             w_used = self.fake_quantizer_w(self.conv.weight)    # w_fq
-            # TODO
-            if self.analyze:
-                self.an_w_fq = w_used
         else:
             w_used = self.conv.weight
 
         y = self._forward_conv(x_used, w_used, self.conv.bias)
-        # TODO
-        if self.analyze:
-            self.an_x = x
-            self.an_w = self.conv.weight.data
-            self.an_y = y
+
         return y
 
 class QLinear(nn.Module):
@@ -126,11 +103,6 @@ class QLinear(nn.Module):
         last_layer=False):
         super(QLinear, self).__init__()
 
-        # TODO
-        self.analyze = False
-        self.an_w = None
-        self.an_x = None
-        self.an_y = None
         if q_bits_w is not None:
             self.an_w_fq = None
         if bias:
@@ -145,18 +117,8 @@ class QLinear(nn.Module):
         self.q_scheme = q_scheme
         self.q_bits_w = q_bits_w
         self.q_bits_a = q_bits_a
-        if q_scheme == 'sat':
-            if q_bits_w is not None:
-                if last_layer: 
-                    # Turn scale adjustment on at the last FC layer weight quantization
-                    self.fake_quantizer_w = SATWeightFakeQuantizer(q_bits_w, out_features=out_features)
-                else:
-                    self.fake_quantizer_w = SATWeightFakeQuantizer(q_bits_w)
-            if q_bits_a is not None:
-                self.fake_quantizer_a = SATActFakeQuantizer(q_bits_a, 10.0)
-        elif q_scheme == 'lsq':
+        if q_scheme == 'lsq':
             if q_bits_w is not None: self.fake_quantizer_w = LSQWeightFakeQuantizer(q_bits_w)
-            # if q_bits_w is not None: self.fake_quantizer_w = LSQWeightFakeQuantizer_constant_rescale(q_bits_w, out_features=out_features) # only for comparison to SAT!!!
             if q_bits_a is not None: self.fake_quantizer_a = LSQActFakeQuantizer(q_bits_a)
         else:
             assert q_scheme is None
@@ -164,243 +126,23 @@ class QLinear(nn.Module):
 
     def forward(self, x):
         if self.q_bits_a is not None:
-            x_used = self.fake_quantizer_a(x)   # x_fq
-            # TODO
-            if self.analyze:
-                self.an_x_fq = x_used                
+            x_used = self.fake_quantizer_a(x)   # x_fq      
         else:
             x_used = x
 
         if self.q_bits_w is not None:
             w_used = self.fake_quantizer_w(self.fc.weight)    # w_fq
-            # TODO
-            if self.analyze:
-                self.an_w_fq = w_used
         else:
             w_used = self.fc.weight
 
-        if (self.q_scheme == 'sat') and (self.q_bits_w is not None) and self.last_layer and (not self.training) and (self.fc.bias is not None):
-            # Refer to https://github.com/deJQK/AdaBits/blob/master/models/quant_ops.py#L274
-            bias_used = self.fc.bias / self.fake_quantizer_w.weight_scale
-        else:
-            bias_used = self.fc.bias
+        y = F.linear(x_used, w_used, bias=self.fc.bias)
 
-        y = F.linear(x_used, w_used, bias=bias_used)
-        # TODO
-        if self.analyze:
-            self.an_x = x
-            self.an_w = self.fc.weight.data
-            self.an_b = bias_used.data
-            self.an_y = y
-        return y
-
-class QLinear_2(nn.Module):
-    def __init__(
-        self,
-        q_scheme,
-        q_bits_w,
-        q_bits_a,
-        in_features, 
-        out_features, 
-        bias=True,
-        last_layer=False):
-        super(QLinear_2, self).__init__()
-
-        # TODO
-        self.analyze = False
-        self.an_w = None
-        self.an_x = None
-        self.an_y = None
-        if q_bits_w is not None:
-            self.an_w_fq = None
-        if bias:
-            self.an_b = None
-        if q_bits_a is not None:
-            self.an_x_fq = None
-
-        self.fc = nn.Linear(in_features, out_features, bias=bias)
-        self.fc.reset_parameters()
-
-        if (q_bits_w is None) and (q_bits_a is None): q_scheme = None
-        self.q_scheme = q_scheme
-        self.q_bits_w = q_bits_w
-        self.q_bits_a = q_bits_a
-        if q_scheme == 'sat':
-            if q_bits_w is not None:
-                if last_layer: 
-                    # Turn scale adjustment on at the last FC layer weight quantization
-                    self.fake_quantizer_w = SATWeightFakeQuantizer(q_bits_w)  # NOT USE WEIGHT RESCALE
-                else:
-                    self.fake_quantizer_w = SATWeightFakeQuantizer(q_bits_w)
-            if q_bits_a is not None:
-                self.fake_quantizer_a = SATActFakeQuantizer(q_bits_a, 10.0)
-        elif q_scheme == 'lsq':
-            if q_bits_w is not None: self.fake_quantizer_w = LSQWeightFakeQuantizer(q_bits_w)
-            # if q_bits_w is not None: self.fake_quantizer_w = LSQWeightFakeQuantizer_constant_rescale(q_bits_w, out_features=out_features) # only for comparison to SAT!!!
-            if q_bits_a is not None: self.fake_quantizer_a = LSQActFakeQuantizer(q_bits_a)
-        else:
-            assert q_scheme is None
-        self.last_layer = last_layer
-
-    def forward(self, x):
-        if self.q_bits_a is not None:
-            x_used = self.fake_quantizer_a(x)   # x_fq
-            # TODO
-            if self.analyze:
-                self.an_x_fq = x_used                
-        else:
-            x_used = x
-
-        if self.q_bits_w is not None:
-            w_used = self.fake_quantizer_w(self.fc.weight)    # w_fq
-            # TODO
-            if self.analyze:
-                self.an_w_fq = w_used
-        else:
-            w_used = self.fc.weight
-
-        if (self.q_scheme == 'sat') and (self.q_bits_w is not None) and self.last_layer and (not self.training) and (self.fc.bias is not None):
-            # Refer to https://github.com/deJQK/AdaBits/blob/master/models/quant_ops.py#L274
-            bias_used = self.fc.bias / self.fake_quantizer_w.weight_scale
-        else:
-            bias_used = self.fc.bias
-
-        y = F.linear(x_used, w_used, bias=bias_used)
-        # TODO
-        if self.analyze:
-            self.an_x = x
-            self.an_w = self.fc.weight.data
-            self.an_b = bias_used.data
-            self.an_y = y
         return y
 
 
 """
 Composite module
 """
-# Refer to https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L59 and https://github.com/zhutmost/lsq-net/blob/master/model/resnet.py#L33
-class QBasicBlock(nn.Module):
-    expansion = 1
-
-    def __init__(
-        self,
-        q_scheme,
-        q_bits_w,
-        q_bits_a,
-        track_running_stats,
-        in_planes,
-        planes,
-        stride=1,
-        downsample=None,
-        groups=1,
-        base_width=64,
-        dilation=1,
-        norm_layer=None):
-        super(QBasicBlock, self).__init__()
-
-        if norm_layer is None:
-            norm_layer = BatchNorm2d
-        if groups != 1 or base_width != 64:
-            raise ValueError('BasicBlock only supports groups = 1 and base_width = 64')
-        if dilation > 1:
-            raise NotImplementedError('Dilation > 1 not supported in BasicBlock')
-
-        if (q_bits_w is None) and (q_bits_a is None): q_scheme = None
-
-        self.conv1 = QConv2d(
-            q_scheme, q_bits_w, q_bits_a,
-            in_planes, planes, 3,
-            stride=stride, padding=1, bias=False)
-        self.bn1 = norm_layer(planes, track_running_stats)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = QConv2d(
-            q_scheme, q_bits_w, q_bits_a,
-            planes, planes, 3,
-            padding=1, bias=False)
-        self.bn2 = norm_layer(planes, track_running_stats)
-        self.downsample = downsample
-        self.stride = stride
-
-    def forward(self, x):
-        residual = x
-
-        y = self.conv1(x)
-        y = self.bn1(y)
-        y = self.relu(y)
-        y = self.conv2(y)
-        y = self.bn2(y)
-
-        if self.downsample is not None:
-            residual = self.downsample(x)
-
-        y += residual
-        y = self.relu(y)
-        return y
-
-# Refer to https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L108 and https://github.com/zhutmost/lsq-net/blob/master/model/resnet.py#L73
-class QBottleneck(nn.Module):
-    expansion = 4
-
-    def __init__(
-        self,
-        q_scheme,
-        q_bits_w,
-        q_bits_a,
-        track_running_stats,
-        in_planes,
-        planes,
-        stride=1,
-        downsample=None,
-        groups=1,
-        base_width=64,
-        dilation=1,
-        norm_layer=None):
-        super(QBottleneck, self).__init__()
-
-        if norm_layer is None:
-            norm_layer = BatchNorm2d
-        width = int(planes * (base_width / 64.0)) * groups
-
-        if (q_bits_w is None) and (q_bits_a is None): q_scheme = None
-
-        self.conv1 = QConv2d(
-            q_scheme, q_bits_w, q_bits_a,
-            in_planes, width, 1,
-            bias=False)
-        self.bn1 = norm_layer(width, track_running_stats)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = QConv2d(
-            q_scheme, q_bits_w, q_bits_a,
-            width, width, 3,
-            stride=stride, padding=dilation, dilation=dilation, groups=groups, bias=False)
-        self.bn2 = norm_layer(width, track_running_stats)
-        self.conv3 = QConv2d(
-            q_scheme, q_bits_w, q_bits_a,
-            width, planes * self.expansion, 1,
-            bias=False)
-        self.bn3 = norm_layer(planes * self.expansion, track_running_stats)
-        self.downsample = downsample
-        self.stride = stride
-
-    def forward(self, x):
-        residual = x
-
-        y = self.conv1(x)
-        y = self.bn1(y)
-        y = self.relu(y)
-        y = self.conv2(y)
-        y = self.bn2(y)
-        y = self.relu(y)
-        y = self.conv3(y)
-        y = self.bn3(y)
-
-        if self.downsample is not None:
-            residual = self.downsample(x)
-
-        y += residual
-        y = self.relu(y)
-        return y
-
 # Refer to https://github.com/soeaver/pytorch-priv/blob/master/models/imagenet/preresnet.py#L26 and https://github.com/jmiemirza/DUA/blob/master/models/resnet_26.py#L10
 class QPreactBasicBlock(nn.Module):
     expansion = 1
@@ -454,65 +196,6 @@ class QPreactBasicBlock(nn.Module):
         y = y + residual
         return y
 
-# Refer to https://github.com/soeaver/pytorch-priv/blob/master/models/imagenet/preresnet.py#L57
-class QPreactBottleneck(nn.Module):
-    expansion = 4
-
-    def __init__(
-        self, 
-        q_scheme,
-        q_bits_w,
-        q_bits_a,
-        track_running_stats,
-        in_planes, 
-        planes, 
-        stride=1,
-        downsample=None,
-        norm_layer=None):
-        super(QPreactBottleneck, self).__init__()
-
-        if norm_layer is None:
-            norm_layer = BatchNorm2d
-        self.downsample = downsample
-        self.stride = stride        
-
-        if (q_bits_w is None) and (q_bits_a is None): q_scheme = None
-
-        self.bn1 = norm_layer(in_planes, track_running_stats)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv1 = QConv2d(
-            q_scheme, q_bits_w, q_bits_a,
-            in_planes, planes, 1, 
-            bias=False)
-        self.bn2 = norm_layer(planes, track_running_stats)
-        self.conv2 = QConv2d(
-            q_scheme, q_bits_w, q_bits_a,
-            planes, planes, 3, 
-            stride=stride, padding=1, bias=False)
-        self.bn3 = norm_layer(planes, track_running_stats)
-        self.conv3 = QConv2d(
-            q_scheme, q_bits_w, q_bits_a,
-            planes, planes * self.expansion, 1, 
-            bias=False)
-
-    def forward(self, x):
-        y = self.bn1(x)
-        y = self.relu(y)
-        y = self.conv1(y)
-        y = self.bn2(y)
-        y = self.relu(y)
-        y = self.conv2(y)
-        y = self.bn3(y)
-        y = self.relu(y)
-        y = self.conv3(y)
-
-        if self.downsample is not None:
-            residual = self.downsample(x)
-        else:
-            residual = x
-
-        y = y + residual
-        return y
 
 # Refer to https://github.com/jmiemirza/DUA/blob/master/models/resnet_26.py#L39
 class Downsample(nn.Module):
