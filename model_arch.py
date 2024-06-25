@@ -74,17 +74,16 @@ class QConv2d(nn.Module):
 
     def forward(self, x):
         if self.q_bits_a is not None:
-            x_used = self.fake_quantizer_a(x)   # x_q
+            x_used = self.fake_quantizer_a(x)   # x_fq
         else:
             x_used = x
 
         if self.q_bits_w is not None:
-            w_used = self.fake_quantizer_w(self.conv.weight)    # w_q
+            w_used = self.fake_quantizer_w(self.conv.weight)    # w_fq
         else:
             w_used = self.conv.weight
 
         y = self._forward_conv(x_used, w_used, self.conv.bias)
-        y = y * self.fake_quantizer_a.s * self.fake_quantizer_w.s
 
         return y
 
@@ -123,17 +122,16 @@ class QLinear(nn.Module):
 
     def forward(self, x):
         if self.q_bits_a is not None:
-            x_used = self.fake_quantizer_a(x)   # x_q      
+            x_used = self.fake_quantizer_a(x)   # x_fq      
         else:
             x_used = x
 
         if self.q_bits_w is not None:
-            w_used = self.fake_quantizer_w(self.fc.weight)    # w_q
+            w_used = self.fake_quantizer_w(self.fc.weight)    # w_fq
         else:
             w_used = self.fc.weight
 
         y = F.linear(x_used, w_used, bias=self.fc.bias)
-        y = y * self.fake_quantizer_a.s * self.fake_quantizer_w.s
 
         return y
 
