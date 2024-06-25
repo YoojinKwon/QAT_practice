@@ -22,10 +22,6 @@ class BatchNorm2d(nn.BatchNorm2d):          # nn.BatchNorm2d with affine=True. N
 
     def forward(self, x):
         y = super(BatchNorm2d, self).forward(x)
-        # TODO
-        if self.analyze:
-            self.an_x = x
-            self.an_y = y
         return y
 
 class QConv2d(nn.Module):
