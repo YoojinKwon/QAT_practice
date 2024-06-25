@@ -319,6 +319,6 @@ def q_preact_resnet26(
         26, num_classes)
     if pretrained:
         assert source_dataset in ['cifar10', 'svhn']
-        pretrained_ckpt = torch.load(f'./pretrained_checkpoint/preact_resnet26_on_{source_dataset}.pt')
+        pretrained_ckpt = torch.load(f'./preact_resnet26_on_cifar10.pt')
         model.load_state_dict(pretrained_ckpt['model'], strict=False)
     return model
