@@ -34,7 +34,7 @@ class LSQWeightFakeQuantizer(nn.Module):
         symmetric=False):
         super(LSQWeightFakeQuantizer, self).__init__()
 
-        assert bits in [i for i in range(2, 32)]
+        assert bits in [i for i in range(2, 33)]
         if all_positive:
             assert not symmetric, "Positive quantization cannot be symmetric"
             self.n = 0
@@ -69,7 +69,7 @@ class LSQActFakeQuantizer(nn.Module):
         symmetric=False):
         super(LSQActFakeQuantizer, self).__init__()
 
-        assert bits in [i for i in range(2, 32)]
+        assert bits in [i for i in range(2, 33)]
         self.bits = bits
         self.symmetric = symmetric
         self.n = -1.0                               # Dummy

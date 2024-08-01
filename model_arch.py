@@ -211,19 +211,19 @@ Model
 """
 
 # Refer to https://github.com/jmiemirza/DUA/blob/master/models/resnet_26.py#L51
-class QPreactResNetForCIFAR(nn.Module):   # For CIFAR or SVHN
+class QAT_RESNET_CIFAR(nn.Module):   # For CIFAR or SVHN
     def __init__(
         self,
         q_scheme,
         q_bits_w,
         q_bits_a,
         track_running_stats,
-        depth,
         num_classes,
+        depth= 26,
         width=1,
         norm_layer=None,
         weight_init='kaiming'):
-        super(QPreactResNetForCIFAR, self).__init__()
+        super(QAT_RESNET_CIFAR, self).__init__()
 
         if norm_layer is None:
             norm_layer = BatchNorm2d
@@ -304,18 +304,15 @@ class QPreactResNetForCIFAR(nn.Module):   # For CIFAR or SVHN
         y = self.fc(y)
         return y
 
+def load_qat_resnet_cifar(model_configs, pretrained='./preact_resnet26_on_cifar10.pt'):
+  model = QAT_RESNET_CIFAR(**model_configs)
+  if pretrained:
+    pretrained_ckpt = torch.load(pretrained)
+    model.load_state_dict(pretrained_ckpt['model'], strict=False)
+  return model
 
-def q_preact_resnet26(
-    pretrained,
-    q_scheme,
-    q_bits_w,
-    q_bits_a,
-    track_running_stats,
-    num_classes):
-    model = QPreactResNetForCIFAR(
-        q_scheme, q_bits_w, q_bits_a, track_running_stats,
-        26, num_classes)
-    if pretrained:
-        pretrained_ckpt = torch.load(f'./preact_resnet26_on_cifar10.pt')
-        model.load_state_dict(pretrained_ckpt['model'], strict=False)
-    return model
+
+
+
+
+
