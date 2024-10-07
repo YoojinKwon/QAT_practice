@@ -16,7 +16,7 @@ def identity_with_grad_scaling(x, scale):
 
 # STE 2 for LSQ
 # Refer to https://github.com/hustzxd/LSQuantization/blob/master/lsq.py#L53
-def round_with_grad_pass(x):
+def round_with_ste(x):
     y_fp = x.round()    # At forward prop
     y_bp = x            # At back-prop
     return y_fp.detach() - y_bp.detach() + y_bp
@@ -56,8 +56,8 @@ class LSQWeightFakeQuantizer(nn.Module):
             self.s.data = 2.0 * w.abs().mean() / math.sqrt(self.p) # initialization
 
         s = identity_with_grad_scaling(self.s, grad_scale) # step size
-        # w_q = round_with_grad_pass((w / s).clamp(self.n, self.p))
-        w_fq = round_with_grad_pass((w / s).clamp(self.n, self.p)) * s
+        # w_q = round_with_ste((w / s).clamp(self.n, self.p))
+        w_fq = round_with_ste((w / s).clamp(self.n, self.p)) * s
         return w_fq
 
 
@@ -98,8 +98,8 @@ class LSQActFakeQuantizer(nn.Module):
             self.s.data = 2.0 * x.abs().mean() / math.sqrt(self.p)
 
         s = identity_with_grad_scaling(self.s, grad_scale)
-        # x_q = round_with_grad_pass((x / s).clamp(self.n, self.p))
-        x_fq = round_with_grad_pass((x / s).clamp(self.n, self.p)) * s
+        # x_q = round_with_ste((x / s).clamp(self.n, self.p))
+        x_fq = round_with_ste((x / s).clamp(self.n, self.p)) * s
         return x_fq
 
 
