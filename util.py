@@ -1,5 +1,35 @@
 import torch
+import matplotlib.pyplot as plt
 
+def visulaize_before_after_quantizer(fp, q): 
+    # Assuming fp_act and q_act are PyTorch tensors
+    x1 = fp_act.numpy().flatten()
+    x2 = q_act.numpy().flatten()
+
+    # Set up the figure and subplots
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+
+    # Custom colors
+    colors = ['#FF7F0E', '#1F77B4']  # Orange and Blue
+
+    # Create the first histogram with custom color
+    axes[0].hist(x1, bins=100, color=colors[0], edgecolor='black', alpha=0.7)
+    axes[0].set_title('Histogram of fp_activation', fontsize=14, fontweight='bold', color='#2F4F4F')
+    axes[0].set_xlabel('Value', fontsize=12)
+    axes[0].set_ylabel('Frequency', fontsize=12)
+
+    # Create the second histogram with custom color
+    axes[1].hist(x2, bins=100, color=colors[1], edgecolor='black', alpha=0.7)
+    axes[1].set_title('Histogram of q_activation', fontsize=14, fontweight='bold', color='#2F4F4F')
+    axes[1].set_xlabel('Value', fontsize=12)
+    axes[1].set_ylabel('Frequency', fontsize=12)
+
+    # Adjust layout for better spacing
+    plt.tight_layout()
+
+    # Display the histograms
+    plt.show()
+    
 class AverageMeter(object): # Compute and store average and current value
     def __init__(self):
         self.val = 0
